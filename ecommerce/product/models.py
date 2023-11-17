@@ -2,12 +2,12 @@ from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 
 
-class Category(models.Model):
+class Category(MPTTModel):
     """Overall, this Category model is designed to store hierarchical data, 
     Where each sub category can have a parent category, except for the top-level categories. 
     This structure is common in scenarios where categories have subcategories, 
     and subcategories can have their own subcategories, forming a tree-like hierarchy."""   
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
     parent = TreeForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
 
     class MPTTMeta:
@@ -18,13 +18,12 @@ class Category(models.Model):
         return self.name
     
 
-    
-
 class Brand(models.Model):
     name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
+
 
 class Product(models.Model):
     name = models.CharField(max_length=100)
