@@ -7,3 +7,5 @@ db*
 .coverage
 .vscode
 schema.yml
+htmlcov/
+pack*.txt
