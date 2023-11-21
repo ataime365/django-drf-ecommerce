@@ -29,6 +29,6 @@ class ProductFactory(factory.django.DjangoModelFactory):
     is_digital = True
     brand = factory.SubFactory(BrandFactory) # Creates a brand before the product object is created
     category = factory.SubFactory(CategoryFactory)
-
+    is_active = True
 
 
