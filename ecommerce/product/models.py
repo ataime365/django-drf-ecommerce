@@ -1,6 +1,19 @@
+from collections.abc import Collection
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
+from .fields import OrderField
+from django.core.exceptions import ValidationError
 
+class ActiveQueryset(models.QuerySet): #models.Manager , no need for managers
+    """This Model Manager enables us return Active Products and Product Lines,
+    We also need to apply the Manager to the Model after creating it
+    default Manager = objects (From django ORM)
+    """
+    # def isactive(self): #models.Manager 
+    #     """This makes this function callable, we are not overriding anything"""
+    #     return self.get_queryset().filter(is_active=True)
+    def isactive(self): 
+        return self.filter(is_active=True)
 
 class Category(MPTTModel):
     """Overall, this Category model is designed to store hierarchical data, 
@@ -9,6 +22,9 @@ class Category(MPTTModel):
     and subcategories can have their own subcategories, forming a tree-like hierarchy."""   
     name = models.CharField(max_length=100, unique=True)
     parent = TreeForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
+    is_active = models.BooleanField(default=False)
+
+    objects = ActiveQueryset.as_manager()
 
     class MPTTMeta:
         order_insertion_by = ["name"]
@@ -20,6 +36,9 @@ class Category(MPTTModel):
 
 class Brand(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=False)
+
+    objects = ActiveQueryset.as_manager()
 
     def __str__(self):
         return self.name
@@ -35,6 +54,9 @@ class Product(models.Model):
     category = TreeForeignKey("Category", on_delete=models.SET_NULL, null=True, blank=True)
     is_active = models.BooleanField(default=False)
 
+    objects = ActiveQueryset.as_manager()  #When not overriding anything
+    # objects = ActiveManager() #when using #models.Manager #When not overriding anything 
+
     def __str__(self):
         return self.name
     
@@ -44,7 +66,20 @@ class ProductLine(models.Model):
     sku = models.CharField(max_length=100)
     stock_qty = models.IntegerField()
     product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="product_line" #used for reverse relationships
+        Product, on_delete=models.CASCADE, related_name="product_line" #used for reverse relationships in serializers.py
         )
     is_active = models.BooleanField(default=False)
+    order = OrderField(unique_for_field="product" , blank=True)
 
+    objects = ActiveQueryset.as_manager() #There is at least one Model manager for each model, default is objects, we have customized the default
+
+    def clean_fields(self, exclude=None):
+        """This filters for duplicate order number"""
+        super().clean_fields(exclude=exclude)
+        qs = ProductLine.objects.filter(product=self.product)
+        for obj in qs:
+            if self.id != obj.id and self.order == obj.order:
+                raise ValidationError("Duplicate value.")
+
+    def __str__(self):
+        return str(self.order)

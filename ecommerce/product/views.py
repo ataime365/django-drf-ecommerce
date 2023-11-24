@@ -3,6 +3,12 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db import connection
+
+# from pygments import highlight # Not necessary
+# from pygments.formatters import TerminalFormatter
+# from pygments.lexers.sql import SqlLexer #depends on the database you are using #PostgresLexer for Postgres db
+# from sqlparse import format
 
 from .models import Brand, Category, Product
 from .serializers import BrandSerializer, CategorySerializer, ProductSerializer
@@ -42,14 +48,25 @@ class ProductView(viewsets.ViewSet):
     A simple Viewset for viewing all products
     """
 
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().isactive() #Product.objects.all() #Product.isactive.all() 
     serializer_class = ProductSerializer
 
     lookup_field = "slug"
 
     def retrieve(self, request, slug=None): #default lookup field is pk i.e  pk=None
-        serializer = ProductSerializer(self.queryset.filter(slug=slug), many=True) #Leave this as True to avoid errors #slug field isnt unique yet
-        return Response(serializer.data)
+        serializer = ProductSerializer(
+            self.queryset.filter(slug=slug).select_related("category", "brand") , 
+            many=True) #many=True to avoid errors #slug field isnt unique yet #select_related does all the table joins for us
+        data = Response(serializer.data)
+
+        # Not so Neccessary
+        # q = list(connection.queries)
+        # print(len(q)) #Amiunt of queries
+        # for qs in q:
+        #     sqlformatted = format(str(qs['sql']), reindent=True)
+        #     print(highlight(sqlformatted, SqlLexer(), TerminalFormatter()))
+
+        return data
     
     def list(self, request):
         serializer = ProductSerializer(self.queryset, many=True)
