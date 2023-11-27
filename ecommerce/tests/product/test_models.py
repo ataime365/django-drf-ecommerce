@@ -48,4 +48,12 @@ class TestProductLineModel:
             product_line_factory(order=1, product=obj).clean()
 
 
-            
+class TestProductImageModel:
+    """This factory will initiate/start all the other factories it is connected to"""
+    def test_str_method(self, product_image_factory):
+        obj = product_image_factory(url="test.jpg") #order=1
+        assert obj.__str__() == "test.jpg" # "1"
+
+
+
+

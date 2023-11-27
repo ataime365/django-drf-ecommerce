@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Brand, Category, Product, ProductLine
+from .models import Brand, Category, Product, ProductLine, ProductImage
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -19,12 +19,20 @@ class BrandSerializer(serializers.ModelSerializer):
         fields = ["brand_name",]
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        exclude = ("id", "productline")
+
+
 class ProductLineSerializer(serializers.ModelSerializer):
     # product = ProductSerializer() #ForeignKey
+    product_image = ProductImageSerializer(many=True) #product_line meant to be product_image, but product_line is the related_field available
 
     class Meta:
         model = ProductLine
-        exclude = ("id", "product", "is_active") #product here is only showing product_id number
+        # exclude = ("id", "product", "is_active") #product here is only showing product_id number
+        fields = ["price", "sku", "stock_qty", "order", "product_image"]
 
 
 class ProductSerializer(serializers.ModelSerializer):

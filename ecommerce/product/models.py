@@ -75,7 +75,7 @@ class ProductLine(models.Model):
     objects = ActiveQueryset.as_manager() #There is at least one Model manager for each model, default is objects, we have customized the default
 
     def clean(self):
-        """This filters for duplicate order number"""
+        """This filters for duplicate order number. #order"""
         # super().clean_fields(exclude=exclude)
         qs = ProductLine.objects.filter(product=self.product)
         for obj in qs:
@@ -83,10 +83,34 @@ class ProductLine(models.Model):
                 raise ValidationError("Duplicate value.")
             
     def save(self, *arg, **kwargs):
-        """To make sure the clean() method above is always called"""
+        """To make sure the clean() method above is always called. #order"""
         self.full_clean()
         return super(ProductLine, self).save(*arg, **kwargs)
 
     def __str__(self):
         return str(self.sku)
+
+
+class ProductImage(models.Model):
+    alternative_text = models.CharField(max_length=100)
+    url = models.ImageField(upload_to=None, default="test.jpg")
+    productline = models.ForeignKey(
+        ProductLine, on_delete=models.CASCADE, related_name="product_image" #used for reverse relationships in serializers.py
+        )
+    order = OrderField(unique_for_field="productline" , blank=True)
+
+    def clean(self):
+        """This filters for duplicate order number. #order"""
+        qs = ProductImage.objects.filter(productline=self.productline)
+        for obj in qs:
+            if self.id != obj.id and self.order == obj.order:
+                raise ValidationError("Duplicate value.")
+            
+    def save(self, *arg, **kwargs):
+        """To make sure the clean() method above is always called. #order"""
+        self.full_clean()
+        return super(ProductImage, self).save(*arg, **kwargs)
+
+    def __str__(self):
+        return str(self.url) #self.order
 
