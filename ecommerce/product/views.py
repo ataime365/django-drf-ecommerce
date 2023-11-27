@@ -54,6 +54,9 @@ class ProductView(viewsets.ViewSet):
     lookup_field = "slug"
 
     def retrieve(self, request, slug=None): #default lookup field is pk i.e  pk=None
+        """
+        An endpoint to return a product by name
+        """
         serializer = ProductSerializer(
             self.queryset.filter(slug=slug).select_related("category", "brand") , 
             many=True) #many=True to avoid errors #slug field isnt unique yet #select_related does all the table joins for us
@@ -74,12 +77,12 @@ class ProductView(viewsets.ViewSet):
     
     @action(methods=["get"], 
             detail=False, 
-            url_path=r"category/(?P<category>\w+)/all",) #when our url_path is dynamic
-    def list_product_by_category(self, request, category=None):
+            url_path=r"category/(?P<slug>[\w-]+)",) #when our url_path is dynamic
+    def list_product_by_category_slug(self, request, slug=None): #category=None @category name is changed to category slug
         """
-        An endpoint to return product by category
+        An endpoint to return products by category
         """
-        serializer = ProductSerializer(self.queryset.filter(category__name=category), many=True) #category__name => Traversing between tables
+        serializer = ProductSerializer(self.queryset.filter(category__slug=slug), many=True) #category__name => Traversing between tables
         return Response(serializer.data)
 
 

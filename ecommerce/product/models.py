@@ -1,4 +1,4 @@
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from django.db import models
 from mptt.models import MPTTModel, TreeForeignKey
 from .fields import OrderField
@@ -21,6 +21,7 @@ class Category(MPTTModel):
     This structure is common in scenarios where categories have subcategories, 
     and subcategories can have their own subcategories, forming a tree-like hierarchy."""   
     name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=255)
     parent = TreeForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
     is_active = models.BooleanField(default=False)
 
@@ -73,13 +74,19 @@ class ProductLine(models.Model):
 
     objects = ActiveQueryset.as_manager() #There is at least one Model manager for each model, default is objects, we have customized the default
 
-    def clean_fields(self, exclude=None):
+    def clean(self):
         """This filters for duplicate order number"""
-        super().clean_fields(exclude=exclude)
+        # super().clean_fields(exclude=exclude)
         qs = ProductLine.objects.filter(product=self.product)
         for obj in qs:
             if self.id != obj.id and self.order == obj.order:
                 raise ValidationError("Duplicate value.")
+            
+    def save(self, *arg, **kwargs):
+        """To make sure the clean() method above is always called"""
+        self.full_clean()
+        return super(ProductLine, self).save(*arg, **kwargs)
 
     def __str__(self):
-        return str(self.order)
+        return str(self.sku)
+

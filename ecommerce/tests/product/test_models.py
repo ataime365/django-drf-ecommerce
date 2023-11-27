@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ValidationError
 
 #Gives us access to the db
 pytestmark = pytest.mark.django_db #Available globally, no need to design each funtion, 
@@ -30,3 +31,21 @@ class TestProductModel:
         obj = product_factory(name="test_Product") #overriding
         # Assert
         assert obj.__str__() == "test_Product"
+
+
+class TestProductLineModel:
+    def test_str_method(self, product_line_factory):
+        obj = product_line_factory(sku="12345")
+        assert obj.__str__() == "12345"
+
+
+    def test_duplicate_order_values(self, product_line_factory, product_factory):
+        obj = product_factory() # New Product
+        product_line_factory(order=1, product=obj) #creating a product line using that product #Fk
+
+        with pytest.raises(ValidationError):
+            # same as the line above, and calling the clean() method in addition
+            product_line_factory(order=1, product=obj).clean()
+
+
+            
