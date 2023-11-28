@@ -1,6 +1,6 @@
 import factory
 
-from ecommerce.product.models import Brand, Category, Product, ProductLine
+from ecommerce.product.models import Brand, Category, Product, ProductLine, ProductImage
 
 
 class CategoryFactory(factory.django.DjangoModelFactory):
@@ -44,3 +44,12 @@ class ProductLineFactory(factory.django.DjangoModelFactory):
     is_active = True
 
 
+class ProductImageFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ProductImage
+
+    alternative_text = "test alternative text"
+    url = "test.jpg"
+    productline = factory.SubFactory(ProductLineFactory)
+
+    #order is auto generated, no need to test it
