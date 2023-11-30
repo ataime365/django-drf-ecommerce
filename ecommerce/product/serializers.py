@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Brand, Category, Product, ProductLine, ProductImage
+from .models import Brand, Category, Product, ProductLine, ProductImage, Attribute, AttributeValue
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -25,14 +25,56 @@ class ProductImageSerializer(serializers.ModelSerializer):
         exclude = ("id", "productline")
 
 
+class AttributeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Attribute
+        fields = ["name", "id"]
+
+
+class AttributeValueSerializer(serializers.ModelSerializer):
+    attribute = AttributeSerializer(many=False) #Foreign key
+    # attribute = serializers.CharField(source="attribute.name") #Flattening and mapping
+
+    class Meta:
+        model = AttributeValue
+        fields = ["attribute", "attribute_value"]
+
+
 class ProductLineSerializer(serializers.ModelSerializer):
     # product = ProductSerializer() #ForeignKey
-    product_image = ProductImageSerializer(many=True) #product_line meant to be product_image, but product_line is the related_field available
+    product_image = ProductImageSerializer(many=True) #reverse relationships
+    attribute_value = AttributeValueSerializer(many=True)  # many-to-many ForeignKey
 
     class Meta:
         model = ProductLine
         # exclude = ("id", "product", "is_active") #product here is only showing product_id number
-        fields = ["price", "sku", "stock_qty", "order", "product_image"]
+        fields = ["price",
+                   "sku", 
+                   "stock_qty", 
+                   "order", 
+                   "product_image",
+                   "attribute_value" ,#many-to-many reference # The attribute_value above overrides the value of this
+                   ]
+        
+    def to_representation(self, instance):
+        """To customize the serializer output, pop() and update() are dictionary methods
+        attribute_value_data is a list of dictionaries, we want to convert it to only one dictionary
+        SAMPLE DATA
+        "attribute_value": [
+          {"attribute": {"name": "screen size","id": 1}, 
+           "attribute_value": "32"},
+          {"attribute": {"name": "panel type","id": 2}, 
+          "attribute_value": "IPS"},
+          ]"""
+        data = super().to_representation(instance) #data is a dictionary/OrderedDict # One record
+        attribute_value_data = data.pop("attribute_value") #pop has removed the attribute_value from the whole data, At this point
+        attr_values_dict = {}
+        for element in attribute_value_data:
+            # attr_values_dict[element.get("attribute").get("id")] = element.get("attribute_value") #works fine
+            attr_values_dict.update({element.get("attribute").get("name") : element.get("attribute_value")}) #using name is better than id
+        # data["specification"] = attr_values_dict #data is a dictionary #works fine
+        data.update({"specification": attr_values_dict})
+        return data
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -40,7 +82,7 @@ class ProductSerializer(serializers.ModelSerializer):
     # category_name = CategorySerializer(source="category.name") #Doesnt work
     brand_name = serializers.CharField(source="brand.name") #source Mapping and Flatenning # Only works with serializers.Fields and not with the direct BrandSerializers
     category_name = serializers.CharField(source="category.name") #source Mapping and Flatenning
-    product_line = ProductLineSerializer(many=True) # many=True Because one Product can have many product lines #product_line is a related_name
+    product_line = ProductLineSerializer(many=True) # many=True Because one Product can have many product lines #product_line is a related_name #reverse relationships foreign key
 
     class Meta:
         model = Product

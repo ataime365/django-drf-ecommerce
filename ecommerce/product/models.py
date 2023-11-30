@@ -15,6 +15,7 @@ class ActiveQueryset(models.QuerySet): #models.Manager , no need for managers
     def isactive(self): 
         return self.filter(is_active=True)
 
+
 class Category(MPTTModel):
     """Overall, this Category model is designed to store hierarchical data, 
     Where each sub category can have a parent category, except for the top-level categories. 
@@ -62,6 +63,55 @@ class Product(models.Model):
         return self.name
     
 
+class Attribute(models.Model):
+    """Example: 'mens-shoe-size', 'mens-shoe-color' """
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class AttributeValue(models.Model):
+    """Example: 11, 12, 13 Or blue, green """
+    attribute_value = models.CharField(max_length=100)
+    attribute = models.ForeignKey(
+        Attribute, on_delete=models.CASCADE, related_name="attribute_value" #class name
+    )
+
+    def __str__(self):
+        return self.attribute.name + '-' + self.attribute_value
+    
+
+class ProductLineAttributeValue(models.Model):
+    """This is the intermediate table that resolves 
+    the 1 'many-to-many' relationship into two(2) 'one-to-many' relationships ,
+    using 2 foreign keys from each table"""
+    attribute_value = models.ForeignKey(
+        AttributeValue, on_delete=models.CASCADE, related_name="product_line_attribute_value_av"
+    )
+    product_line = models.ForeignKey(
+        "ProductLine", on_delete=models.CASCADE, related_name="product_line_attribute_value_pl"
+    )
+
+    class Meta:
+        """The two values should be unique together"""
+        unique_together = ("attribute_value", "product_line")
+
+    def clean(self):
+        """Ensure that each attribute type is unique per product line."""
+        if ProductLineAttributeValue.objects.filter(
+            product_line=self.product_line,
+            attribute_value__attribute=self.attribute_value.attribute
+        ).exclude(id=self.id).exists():
+            raise ValidationError(f"Duplicate attribute type for {self.product_line}.")
+
+    def save(self, *args, **kwargs):
+        """To ensure the clean method is called."""
+        self.full_clean()
+        super(ProductLineAttributeValue, self).save(*args, **kwargs)
+
+
 class ProductLine(models.Model):
     price = models.DecimalField(decimal_places=2, max_digits=6)
     sku = models.CharField(max_length=100)
@@ -71,6 +121,13 @@ class ProductLine(models.Model):
         )
     is_active = models.BooleanField(default=False)
     order = OrderField(unique_for_field="product" , blank=True)
+
+    attribute_value = models.ManyToManyField(to=AttributeValue, 
+                                             through="ProductLineAttributeValue", 
+                                             related_name="product_line_attribute_value") 
+    #attribute_value is just a reference, and not an actual value stored in the database
+
+    product_type = models.ForeignKey("ProductType", on_delete=models.PROTECT)
 
     objects = ActiveQueryset.as_manager() #There is at least one Model manager for each model, default is objects, we have customized the default
 
@@ -114,3 +171,31 @@ class ProductImage(models.Model):
     def __str__(self):
         return str(self.url) #self.order
 
+
+class ProductType(models.Model):
+    name = models.CharField(max_length=100)
+    # This reference is used in the Tabular Inline in the admin.py
+    attribute = models.ManyToManyField(to=Attribute, 
+                                             through="ProductTypeAttribute", 
+                                             related_name="product_type_attribute") #many-to-many reference
+    
+    def __str__(self):
+        return self.name
+
+class ProductTypeAttribute(models.Model):
+    """This is the intermediate table that resolves 
+    the 1 'many-to-many' relationship into two(2) 'one-to-many' relationships ,
+    using 2 foreign keys from each table"""
+    product_type = models.ForeignKey(
+        ProductType, on_delete=models.CASCADE, related_name="product_type_attribute_pt"
+    )
+    attribute = models.ForeignKey(
+        Attribute, on_delete=models.CASCADE, related_name="product_type_attribute_at"
+    )
+
+    class Meta:
+        """The two values should be unique together"""
+        unique_together = ("product_type", "attribute")
+
+
+# slug = asus-tuf-gaming-vg249

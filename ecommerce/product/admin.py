@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .models import Brand, Category, Product, ProductLine, ProductImage
+from .models import Brand, Category, Product, ProductLine, ProductImage, AttributeValue, Attribute, ProductType
+# We are only importing real tables and no intermediate tables
 
 
 class EditLinkInline(object): #images
@@ -31,6 +32,9 @@ class ProductLineInline(EditLinkInline, admin.TabularInline): #using TabularInli
     readonly_fields = ("edit",) #"edit" from the edit function above
 
 
+class AttributeValueInline(admin.TabularInline):
+    model = AttributeValue.product_line_attribute_value.through #This points to the "ProductLineAttributeValue" intermediate model
+
 # @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     inlines = [
@@ -40,10 +44,29 @@ class ProductAdmin(admin.ModelAdmin):
 class ProductLineAdmin(admin.ModelAdmin):
     inlines = [
         ProductImageInline,
+        AttributeValueInline,
     ]
+
+class AttributeInline(admin.TabularInline):
+    model = Attribute.product_type_attribute.through # Points to "ProductTypeAttribute" intermediate model #many-to-many reference
+            #SecondTable.related_name_from_m2m_on_FirstTable.through
+
+class ProductTypeAdmin(admin.ModelAdmin):
+    inlines = [
+        AttributeInline,
+    ]
+
+class AttributeAdmin(admin.ModelAdmin):
+    """Added this myself, not very important"""
+    ordering = ('id',)
 
 
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Brand)
 admin.site.register(Category)
-admin.site.register(ProductLine, ProductLineAdmin)
+admin.site.register(ProductLine, ProductLineAdmin) #utilizing customizations
+admin.site.register(Attribute, AttributeAdmin)
+admin.site.register(AttributeValue)
+admin.site.register(ProductType, ProductTypeAdmin)
+
+
