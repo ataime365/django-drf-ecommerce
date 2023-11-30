@@ -9,3 +9,4 @@ db*
 schema.yml
 htmlcov/
 pack*.txt
+None/
