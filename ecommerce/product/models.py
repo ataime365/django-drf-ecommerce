@@ -55,6 +55,8 @@ class Product(models.Model):
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE) #use SET_NULL # the on_delete is for the brand, if the brand is deleted
     category = TreeForeignKey("Category", on_delete=models.SET_NULL, null=True, blank=True)
     is_active = models.BooleanField(default=False)
+    
+    product_type = models.ForeignKey("ProductType", on_delete=models.PROTECT, related_name="product")
 
     objects = ActiveQueryset.as_manager()  #When not overriding anything
     # objects = ActiveManager() #when using #models.Manager #When not overriding anything 
@@ -99,11 +101,13 @@ class ProductLineAttributeValue(models.Model):
         unique_together = ("attribute_value", "product_line")
 
     def clean(self):
-        """Ensure that each attribute type is unique per product line."""
+        """Validation Check: Ensure that each attribute type is unique per product line."""
         if ProductLineAttributeValue.objects.filter(
             product_line=self.product_line,
             attribute_value__attribute=self.attribute_value.attribute
-        ).exclude(id=self.id).exists():
+        ).exclude(id=self.id).exists(): 
+            #exclude , excludes the current instance of ProductLineAttributeValue (intermediate table), 
+            # so the current instance isn't flaggged as a duplicate
             raise ValidationError(f"Duplicate attribute type for {self.product_line}.")
 
     def save(self, *args, **kwargs):
@@ -126,8 +130,6 @@ class ProductLine(models.Model):
                                              through="ProductLineAttributeValue", 
                                              related_name="product_line_attribute_value") 
     #attribute_value is just a reference, and not an actual value stored in the database
-
-    product_type = models.ForeignKey("ProductType", on_delete=models.PROTECT)
 
     objects = ActiveQueryset.as_manager() #There is at least one Model manager for each model, default is objects, we have customized the default
 
