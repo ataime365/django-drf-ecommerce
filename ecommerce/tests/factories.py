@@ -1,9 +1,8 @@
 import factory
 
-from ecommerce.product.models import (Attribute, AttributeValue,
-                                      Brand, Category, 
-                                      Product, ProductLine, 
-                                      ProductImage, ProductType)
+from ecommerce.product.models import (Category, Product, ProductType, 
+                                      ProductLine, Attribute, AttributeValue, 
+                                      ProductImage, ProductLineAttributeValue)
 
 
 class CategoryFactory(factory.django.DjangoModelFactory):
@@ -11,15 +10,9 @@ class CategoryFactory(factory.django.DjangoModelFactory):
         model = Category
 
     #Fields we want to test
-    name = factory.Sequence(lambda n: f"category_{n}") #creating varying/dynamic values
+    name = factory.Sequence(lambda n: f"test_category_{n}") #creating varying/dynamic values
+    slug = factory.Sequence(lambda n: f"test_slug_{n}") #creating varying/dynamic values
 
-
-class BrandFactory(factory.django.DjangoModelFactory): #obj
-    class Meta:
-        model = Brand
-
-    #Fields we want to test
-    name = factory.Sequence(lambda n: f"brand_{n}")
 
 
 class AttributeFactory(factory.django.DjangoModelFactory):
@@ -34,7 +27,8 @@ class ProductTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ProductType
 
-    name = "test product type"
+    name = factory.Sequence(lambda n: f"test_product_type_{n}") #Just to make it dynamic
+    # parent = factory.SubFactory("self")
 
     @factory.post_generation
     def attribute(self, create, extracted, **kwargs):
@@ -49,13 +43,20 @@ class ProductFactory(factory.django.DjangoModelFactory):
         model = Product
 
     #Fields we want to test
-    name = "test_Product"
+    name =factory.Sequence(lambda n: f"test_product_name_{n}") #creating varying/dynamic values  "test_Product"
+    pid =factory.Sequence(lambda n: f"0000_{n}") #creating varying/dynamic values 
     description = "test_description"
-    is_digital = True
-    brand = factory.SubFactory(BrandFactory) # Creates a brand before the product object is created
+    is_digital = False
     category = factory.SubFactory(CategoryFactory) #Foreign key
     is_active = True
     product_type = factory.SubFactory(ProductTypeFactory) #Foreign key
+
+    @factory.post_generation
+    def attribute_value(self, create, extracted, **kwargs):
+        """For many-to-many references, Not mandatory because there isn't an actual field"""
+        if not create or not extracted:
+            return
+        self.attribute_value.add(*extracted)
 
 
 class ProductLineFactory(factory.django.DjangoModelFactory):
@@ -67,7 +68,9 @@ class ProductLineFactory(factory.django.DjangoModelFactory):
     sku = "12345"
     stock_qty = 1
     product = factory.SubFactory(ProductFactory)
+    product_type = factory.SubFactory(ProductTypeFactory)
     is_active = True
+    weight = 100
 
     @factory.post_generation
     def attribute_value(self, create, extracted, **kwargs):
@@ -91,8 +94,15 @@ class ProductImageFactory(factory.django.DjangoModelFactory):
 
     alternative_text = "test alternative text"
     url = "test.jpg"
-    productline = factory.SubFactory(ProductLineFactory)
+    product_line = factory.SubFactory(ProductLineFactory)
 
-    #order is auto generated, no need to test it
+    # order is auto generated, no need to test it
 
 
+class ProductLineAttributeValueFactory(factory.django.DjangoModelFactory):
+    """Intermediate Table, not always used, has 2 Foreign Keys"""
+    class Meta:
+        model = ProductLineAttributeValue
+
+    attribute_value = factory.SubFactory(AttributeValueFactory)
+    product_line = factory.SubFactory(ProductLineFactory)

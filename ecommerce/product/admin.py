@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .models import Brand, Category, Product, ProductLine, ProductImage, AttributeValue, Attribute, ProductType
+from .models import Category, Product, ProductLine, ProductImage, AttributeValue, Attribute, ProductType
 # We are only importing real tables and no intermediate tables
 
 
@@ -62,7 +62,6 @@ class AttributeAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Product, ProductAdmin)
-admin.site.register(Brand)
 admin.site.register(Category)
 admin.site.register(ProductLine, ProductLineAdmin) #utilizing customizations
 admin.site.register(Attribute, AttributeAdmin)

@@ -9,7 +9,6 @@ from ecommerce.product import views
 router = DefaultRouter()
 
 router.register(r"category", views.CategoryView )
-router.register(r"brand", views.BrandView )
 router.register(r"product", views.ProductView )
 
 urlpatterns = [

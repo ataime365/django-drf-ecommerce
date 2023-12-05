@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Brand, Category, Product, ProductLine, ProductImage, Attribute, AttributeValue, ProductType
+from .models import Category, Product, ProductLine, ProductImage, Attribute, AttributeValue, ProductType
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -11,18 +11,11 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ["category_name",]
 
 
-class BrandSerializer(serializers.ModelSerializer):
-    brand_name = serializers.CharField(source="name") #mapping #Not neccessary for the ProductSerializer output
-
-    class Meta:
-        model = Brand
-        fields = ["brand_name",]
-
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        exclude = ("id", "productline")
+        exclude = ("id", "product_line")
 
 
 class AttributeSerializer(serializers.ModelSerializer):
@@ -87,7 +80,7 @@ class ProductTypeSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     # brand_name = BrandSerializer()  #To enable brand and category data related to a product to be returned with Products data
     # category_name = CategorySerializer(source="category.name") #Doesnt work
-    brand_name = serializers.CharField(source="brand.name") #source Mapping and Flatenning # Only works with serializers.Fields and not with the direct BrandSerializers
+    # brand_name = serializers.CharField(source="brand.name") #source Mapping and Flatenning # Only works with serializers.Fields and not with the direct BrandSerializers
     category_name = serializers.CharField(source="category.name") #source Mapping and Flatenning
     product_line = ProductLineSerializer(many=True) # many=True Because one Product can have many product lines #product_line is a related_name #reverse relationships foreign key
     # product_type = ProductTypeSerializer()
@@ -102,7 +95,7 @@ class ProductSerializer(serializers.ModelSerializer):
                   "description", 
                   "is_digital",
                 #   "product_type", 
-                  "brand_name", 
+                #   "brand_name", 
                   "category_name", 
                   "product_line",
                   "attribute"]

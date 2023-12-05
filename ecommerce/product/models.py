@@ -4,7 +4,7 @@ from mptt.models import MPTTModel, TreeForeignKey
 from .fields import OrderField
 from django.core.exceptions import ValidationError
 
-class ActiveQueryset(models.QuerySet): #models.Manager , no need for managers
+class IsActiveQueryset(models.QuerySet): #models.Manager , no need for managers
     """This Model Manager enables us return Active Products and Product Lines,
     We also need to apply the Manager to the Model after creating it
     default Manager = objects (From django ORM)
@@ -12,7 +12,7 @@ class ActiveQueryset(models.QuerySet): #models.Manager , no need for managers
     # def isactive(self): #models.Manager 
     #     """This makes this function callable, we are not overriding anything"""
     #     return self.get_queryset().filter(is_active=True)
-    def isactive(self): 
+    def is_active(self): 
         return self.filter(is_active=True)
 
 
@@ -21,12 +21,12 @@ class Category(MPTTModel):
     Where each sub category can have a parent category, except for the top-level categories. 
     This structure is common in scenarios where categories have subcategories, 
     and subcategories can have their own subcategories, forming a tree-like hierarchy."""   
-    name = models.CharField(max_length=100, unique=True)
-    slug = models.SlugField(max_length=255)
+    name = models.CharField(max_length=235, unique=True)
+    slug = models.SlugField(max_length=255, unique=True)
     parent = TreeForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
     is_active = models.BooleanField(default=False)
 
-    objects = ActiveQueryset.as_manager()
+    objects = IsActiveQueryset.as_manager()
 
     class MPTTMeta:
         order_insertion_by = ["name"]
@@ -36,29 +36,24 @@ class Category(MPTTModel):
         return self.name
     
 
-class Brand(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    is_active = models.BooleanField(default=False)
-
-    objects = ActiveQueryset.as_manager()
-
-    def __str__(self):
-        return self.name
-
-
 class Product(models.Model):
     """A product must have a brand, but category is not compulsory, can be null"""
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=255) #we can't have 2 product with the same url, so the slug link has to be unique
+    pid = models.CharField(max_length=10, unique=True)
     description = models.TextField(blank=True)
     is_digital = models.BooleanField(default=False) #Most of the products are physical products
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE) #use SET_NULL # the on_delete is for the brand, if the brand is deleted
-    category = TreeForeignKey("Category", on_delete=models.SET_NULL, null=True, blank=True)
+    category = TreeForeignKey("Category", on_delete=models.PROTECT, null=True, blank=True)
     is_active = models.BooleanField(default=False)
     
     product_type = models.ForeignKey("ProductType", on_delete=models.PROTECT, related_name="product")
-
-    objects = ActiveQueryset.as_manager()  #When not overriding anything
+    created_at = models.DateTimeField(auto_now_add=True, editable=False) #auto_now_add adds the time and date field #editable=False it wouldnt be shown in the admin
+    # M2M reference
+    attribute_value = models.ManyToManyField(to="AttributeValue", 
+                                             through="ProductAttributeValue", 
+                                             related_name="product_attribute_value") #related_name already in use ?
+    
+    objects = IsActiveQueryset.as_manager()  #When not overriding anything
     # objects = ActiveManager() #when using #models.Manager #When not overriding anything 
 
     def __str__(self):
@@ -84,6 +79,37 @@ class AttributeValue(models.Model):
     def __str__(self):
         return self.attribute.name + '-' + self.attribute_value
     
+
+class ProductAttributeValue(models.Model):
+    """This is the intermediate table that resolves 
+    the 1 'many-to-many' relationship into two(2) 'one-to-many' relationships ,
+    using 2 foreign keys from each table"""
+    attribute_value = models.ForeignKey(
+        AttributeValue, on_delete=models.CASCADE, related_name="product_attribute_value_av"
+    )
+    product = models.ForeignKey(
+        "Product", on_delete=models.CASCADE, related_name="product_attribute_value_pl"
+    )
+
+    class Meta:
+        """The two values should be unique together"""
+        unique_together = ("attribute_value", "product")
+
+    def clean(self):
+        """Validation Check: Ensure that each attribute type is unique per product line."""
+        if ProductAttributeValue.objects.filter(
+            product=self.product,
+            attribute_value__attribute=self.attribute_value.attribute
+        ).exclude(id=self.id).exists(): 
+            #exclude , excludes the current instance of ProductLineAttributeValue (intermediate table), 
+            # so the current instance isn't flaggged as a duplicate
+            raise ValidationError(f"Duplicate attribute type for {self.product}.")
+
+    def save(self, *args, **kwargs):
+        """To ensure the clean method is called."""
+        self.full_clean()
+        super(ProductAttributeValue, self).save(*args, **kwargs)
+
 
 class ProductLineAttributeValue(models.Model):
     """This is the intermediate table that resolves 
@@ -121,17 +147,20 @@ class ProductLine(models.Model):
     sku = models.CharField(max_length=100)
     stock_qty = models.IntegerField()
     product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="product_line" #used for reverse relationships in serializers.py
+        Product, on_delete=models.PROTECT, related_name="product_line" #used for reverse relationships in serializers.py
         )
     is_active = models.BooleanField(default=False)
     order = OrderField(unique_for_field="product" , blank=True)
+    weight = models.FloatField()
 
     attribute_value = models.ManyToManyField(to=AttributeValue, 
                                              through="ProductLineAttributeValue", 
                                              related_name="product_line_attribute_value") 
     #attribute_value is just a reference, and not an actual value stored in the database
+    created_at = models.DateField(auto_now_add=True, editable=False)
+    product_type = models.ForeignKey("ProductType", on_delete=models.PROTECT, related_name="product_line_type")
 
-    objects = ActiveQueryset.as_manager() #There is at least one Model manager for each model, default is objects, we have customized the default
+    objects = IsActiveQueryset.as_manager() #There is at least one Model manager for each model, default is objects, we have customized the default
 
     def clean(self):
         """This filters for duplicate order number. #order"""
@@ -153,14 +182,14 @@ class ProductLine(models.Model):
 class ProductImage(models.Model):
     alternative_text = models.CharField(max_length=100)
     url = models.ImageField(upload_to=None, default="test.jpg")
-    productline = models.ForeignKey(
+    product_line = models.ForeignKey(
         ProductLine, on_delete=models.CASCADE, related_name="product_image" #used for reverse relationships in serializers.py
         )
-    order = OrderField(unique_for_field="productline" , blank=True)
+    order = OrderField(unique_for_field="product_line" , blank=True)
 
     def clean(self):
         """This filters for duplicate order number. #order"""
-        qs = ProductImage.objects.filter(productline=self.productline)
+        qs = ProductImage.objects.filter(product_line=self.product_line)
         for obj in qs:
             if self.id != obj.id and self.order == obj.order:
                 raise ValidationError("Duplicate value.")
@@ -171,11 +200,12 @@ class ProductImage(models.Model):
         return super(ProductImage, self).save(*arg, **kwargs)
 
     def __str__(self):
-        return str(self.url) #self.order
+        return f"{self.product_line.sku}_img" #using the foreign key to traverse to the ProductLine table to access the sku 
 
 
 class ProductType(models.Model):
     name = models.CharField(max_length=100)
+    parent = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
     # This reference is used in the Tabular Inline in the admin.py
     attribute = models.ManyToManyField(to=Attribute, 
                                              through="ProductTypeAttribute", 
@@ -187,7 +217,7 @@ class ProductType(models.Model):
 class ProductTypeAttribute(models.Model):
     """This is the intermediate table that resolves 
     the 1 'many-to-many' relationship into two(2) 'one-to-many' relationships ,
-    using 2 foreign keys from each table"""
+    using 2 foreign keys from each table. Connecting ProductType Table to Attribute Table"""
     product_type = models.ForeignKey(
         ProductType, on_delete=models.CASCADE, related_name="product_type_attribute_pt"
     )
