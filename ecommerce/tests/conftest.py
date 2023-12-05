@@ -3,19 +3,19 @@ import pytest
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
 
-from .factories import (AttributeFactory, AttributeValueFactory, 
-                        BrandFactory, CategoryFactory, ProductFactory, 
-                        ProductLineFactory, ProductImageFactory, ProductTypeFactory)
+from .factories import (CategoryFactory, ProductFactory, ProductLineFactory, 
+                        AttributeFactory, AttributeValueFactory, ProductImageFactory, 
+                        ProductTypeFactory, ProductLineAttributeValueFactory)
 
 
 register(CategoryFactory) #category_factory
-register(BrandFactory)
 register(ProductFactory) #product_factory
 register(ProductLineFactory) #product_line_factory
 register(ProductImageFactory)
 register(AttributeFactory)
 register(AttributeValueFactory)
 register(ProductTypeFactory)
+register(ProductLineAttributeValueFactory)
 
 # category_factory #This is how CategoryFactory must be assesed, lower case, with an underscore
 # category_factory is now available globally

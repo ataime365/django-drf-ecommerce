@@ -11,8 +11,8 @@ from pygments.formatters import TerminalFormatter
 from pygments.lexers.sql import SqlLexer #depends on the database you are using #PostgresLexer for Postgres db
 from sqlparse import format
 
-from .models import Brand, Category, Product, ProductLineAttributeValue
-from .serializers import BrandSerializer, CategorySerializer, ProductSerializer
+from .models import Category, Product, ProductLineAttributeValue
+from .serializers import CategorySerializer, ProductSerializer
 
 
 class CategoryView(viewsets.ViewSet):
@@ -29,27 +29,13 @@ class CategoryView(viewsets.ViewSet):
         return Response(serializer.data)
     
 
-class BrandView(viewsets.ViewSet):
-    """
-    A simple Viewset for viewing all brands
-    """
-
-    queryset = Brand.objects.all()
-    serializer_class = BrandSerializer
-
-    @extend_schema(responses=BrandSerializer, tags=['brand']) #Docs
-    def list(self, request):
-        serializer = BrandSerializer(self.queryset, many=True)
-        return Response(serializer.data)
-    
-
 @extend_schema(responses=ProductSerializer, tags=['product']) #Docs
 class ProductView(viewsets.ViewSet):
     """
     A simple Viewset for viewing all products
     """
 
-    queryset = Product.objects.all().isactive() #Product.objects.all() #Product.isactive.all() 
+    queryset = Product.objects.all().is_active() #Product.objects.all() #Product.isactive.all() 
     serializer_class = ProductSerializer
 
     lookup_field = "slug"
@@ -59,7 +45,7 @@ class ProductView(viewsets.ViewSet):
         An endpoint to return a product by name
         """
         serializer = ProductSerializer( #self.queryset.filter()
-            Product.objects.filter(slug=slug).select_related("category", "brand")
+            Product.objects.filter(slug=slug).select_related("category")
             .prefetch_related(Prefetch("product_line__product_image")) 
             .prefetch_related(Prefetch("product_line__attribute_value__attribute")),
               #traversing(joining) 3 tables using their related_name  #Prefetch(related_name1)
