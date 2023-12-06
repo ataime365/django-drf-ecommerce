@@ -77,7 +77,7 @@ class AttributeValue(models.Model):
     )
 
     def __str__(self):
-        return self.attribute.name + '-' + self.attribute_value
+        return self.attribute.name + '-' + self.attribute_value #For the Admin interface
     
 
 class ProductAttributeValue(models.Model):
@@ -205,10 +205,10 @@ class ProductImage(models.Model):
 
 class ProductType(models.Model):
     name = models.CharField(max_length=100)
-    parent = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
+    parent = models.ForeignKey("self", on_delete=models.PROTECT, null=True, blank=True) #only one level depth #models.ForeignKey and not TreeForeignKey
     # This reference is used in the Tabular Inline in the admin.py
     attribute = models.ManyToManyField(to=Attribute, 
-                                             through="ProductTypeAttribute", 
+                                             through="ProductTypeAttribute", #through the intermediate table
                                              related_name="product_type_attribute") #many-to-many reference
     
     def __str__(self):

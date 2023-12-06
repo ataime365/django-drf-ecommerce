@@ -32,19 +32,28 @@ class ProductLineInline(EditLinkInline, admin.TabularInline): #using TabularInli
     readonly_fields = ("edit",) #"edit" from the edit function above
 
 
-class AttributeValueInline(admin.TabularInline):
+class AttributeValueProductLineInline(admin.TabularInline):
+    """ ProductLine to AttributeValue
+    On the ProductLine table, we have a M2M reference field -> attribute_value = models.ManyToManyField(to=AttributeValue, 
+                                             through="ProductLineAttributeValue", 
+                                             related_name="product_line_attribute_value") """
     model = AttributeValue.product_line_attribute_value.through #This points to the "ProductLineAttributeValue" intermediate model
+
+class AttributeValueProductInline(admin.TabularInline):
+    """Product to AttributeValue"""
+    model = AttributeValue.product_attribute_value.through
 
 # @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     inlines = [
-        ProductLineInline
+        ProductLineInline,
+        AttributeValueProductInline
     ]
 
 class ProductLineAdmin(admin.ModelAdmin):
     inlines = [
         ProductImageInline,
-        AttributeValueInline,
+        AttributeValueProductLineInline,
     ]
 
 class AttributeInline(admin.TabularInline):
