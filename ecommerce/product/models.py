@@ -24,9 +24,9 @@ class Category(MPTTModel):
     name = models.CharField(max_length=235, unique=True)
     slug = models.SlugField(max_length=255, unique=True)
     parent = TreeForeignKey("self", on_delete=models.PROTECT, null=True, blank=True)
-    is_active = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False) #Add this in tests
 
-    objects = IsActiveQueryset.as_manager()
+    objects = IsActiveQueryset.as_manager() #This is_active filter is already on the object
 
     class MPTTMeta:
         order_insertion_by = ["name"]
