@@ -12,7 +12,7 @@ class CategoryFactory(factory.django.DjangoModelFactory):
     #Fields we want to test
     name = factory.Sequence(lambda n: f"test_category_{n}") #creating varying/dynamic values
     slug = factory.Sequence(lambda n: f"test_slug_{n}") #creating varying/dynamic values
-
+    # is_active = True
 
 
 class AttributeFactory(factory.django.DjangoModelFactory):

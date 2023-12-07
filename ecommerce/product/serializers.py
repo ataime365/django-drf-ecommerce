@@ -4,11 +4,11 @@ from .models import Category, Product, ProductLine, ProductImage, Attribute, Att
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source="name") #mapping "name" to category_name, or changing name #Not neccessary for the ProductSerializer output
+    category = serializers.CharField(source="name") #mapping "name" to category_name, or changing name #Not neccessary for the ProductSerializer output
 
     class Meta:
         model = Category
-        fields = ["category_name",]
+        fields = ["category", "slug"]
 
 
 
@@ -81,42 +81,82 @@ class ProductSerializer(serializers.ModelSerializer):
     # brand_name = BrandSerializer()  #To enable brand and category data related to a product to be returned with Products data
     # category_name = CategorySerializer(source="category.name") #Doesnt work
     # brand_name = serializers.CharField(source="brand.name") #source Mapping and Flatenning # Only works with serializers.Fields and not with the direct BrandSerializers
-    category_name = serializers.CharField(source="category.name") #source Mapping and Flatenning
+    
+    # category = serializers.CharField(source="category.name") #source Mapping and Flatenning
     product_line = ProductLineSerializer(many=True) # many=True Because one Product can have many product lines #product_line is a related_name #reverse relationships foreign key
     # product_type = ProductTypeSerializer()
-    attribute = serializers.SerializerMethodField(read_only=True) #This is used to add custom fields that doesnt already exist on our model
-    
+    # attribute = serializers.SerializerMethodField(read_only=True) #Custom field #This is used to add custom fields that doesnt already exist on our model
+    attribute_value = AttributeValueSerializer(many=True)
 
     class Meta:
         model = Product
         # exclude = ("id",)
         fields = ["name", 
                   "slug", 
+                  "pid",
                   "description", 
-                  "is_digital",
+                #   "is_digital",
                 #   "product_type", 
-                #   "brand_name", 
-                  "category_name", 
+                #   "category",
+                #   "created_at", 
                   "product_line",
-                  "attribute"]
+                  "attribute_value"] # first check output from this attribute_value
 
-    def get_attribute(self, obj):
-        """custom field: From the SerializerMethodField above, filter by related_name, Always use real tables, never intermediate tables
-        This is just like running an SQl query on a joined table"""
-        attribute = Attribute.objects.filter(product_type_attribute__product__id=obj.id)
-        # print(attribute)
-        return AttributeSerializer(attribute, many=True).data
-
+    # def get_attribute(self, obj):
+    #     """custom field: From the SerializerMethodField above, filter by related_name, Always use real tables, never intermediate tables
+    #     This is just like running an SQl query on a joined table"""
+    #     attribute = Attribute.objects.filter(product_type_attribute__product__id=obj.id)
+    #     # print(attribute)
+    #     return AttributeSerializer(attribute, many=True).data
 
     def to_representation(self, instance):
-        """To customize the serializer output, customizing the 'attribute' output"""
+        """To customize the serializer output, customizing the 'attribute' output
+        attribute is also renamed to 'type specification' """
         data = super().to_representation(instance)
-        attribute_data = data.pop("attribute")
-        attribute_dict = {}
+        attribute_data = data.pop("attribute_value")
+        attr_values_dict = {}
         for element in attribute_data:
-            attribute_dict.update({element.get("id"): element.get("name")})
-        data.update({"type specification": attribute_dict})
+            attr_values_dict.update({element.get("attribute").get("name"): element.get("attribute_value")})
+        data.update({"attribute": attr_values_dict})
         return data
     
+
+class ProductLineCategorySerializer(serializers.ModelSerializer):
+    """Another ProductLine serializer for a different Task"""
+    product_image = ProductImageSerializer(many=True) #reverse relationships
+
+    class Meta:
+        model = ProductLine
+        fields = ["price",
+                   "product_image",
+                   ]
+
+class ProductCategorySerializer(serializers.ModelSerializer):
+    """Another Product Serializer for a different Task"""
+    # category = serializers.CharField(source="category.name") #source Mapping and Flatenning
+    product_line = ProductLineCategorySerializer(many=True) # many=True Because one Product can have many product lines #product_line is a related_name #reverse relationships foreign key
+
+    class Meta:
+        model = Product
+        fields = ["name", 
+                  "slug", 
+                  "pid",
+                #   "category",
+                  "created_at", 
+                  "product_line"]
+
+    def to_representation(self, instance):
+        """To customize the serializer output, customizing the 'Product Category' output"""
+        data = super().to_representation(instance)
+        x = data.pop("product_line") #x is a list of Product lines, but we are taking only the first one x[0]
+        # print(x) #To inspect the data coming from 'list_product_by_category_slug' view
+        if x: #To avoid errors
+            first_product_line = x[0]
+            price = first_product_line["price"]
+            image = first_product_line["product_image"]
+            data.update({"price":price, "image":image})
+            # data.update({"image":image})
+        return data
+
 
 # serializers are very important in customizing the data output and manipulating the data
